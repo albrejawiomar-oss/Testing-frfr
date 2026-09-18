@@ -1,0 +1,6 @@
+{
+  "name": "NeonFit",
+  "description": "Dark-neon gamified fitness & nutrition tracker with workout volume calculation, macro tracking, leveling engine, and AI coach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
