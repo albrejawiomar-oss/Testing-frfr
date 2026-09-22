@@ -102,6 +102,16 @@ fun ProUpgradeModal(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     ProFeatureRow(
+                        icon = Icons.Default.Science,
+                        title = "Full-Spectrum Deficiency Protocols",
+                        desc = "All clinical nutrient remedies, co-factor synergies & pro meal plans"
+                    )
+                    ProFeatureRow(
+                        icon = Icons.Default.Sync,
+                        title = "Automated Diet Tracker Sync",
+                        desc = "Directly map macro targets and deficiency habits to your daily tracker"
+                    )
+                    ProFeatureRow(
                         icon = Icons.Default.Palette,
                         title = "Custom Cyber Skins & Wallpapers",
                         desc = "Unlock Quantum Nexus & VIP chromatic HUD aesthetics"
@@ -110,11 +120,6 @@ fun ProUpgradeModal(
                         icon = Icons.Default.Insights,
                         title = "Advanced AI Biometric Analytics",
                         desc = "Deep hypertrophy split reasoning & macro projections"
-                    )
-                    ProFeatureRow(
-                        icon = Icons.Default.CloudSync,
-                        title = "Encrypted Cloud Vault Backup",
-                        desc = "Seamless cross-device backup for all Room DB telemetry"
                     )
                 }
 

@@ -37,6 +37,9 @@ class FitnessRepository(private val context: Context) {
     private val _nutritionGoals = MutableStateFlow(NutritionGoals())
     val nutritionGoals: StateFlow<NutritionGoals> = _nutritionGoals.asStateFlow()
 
+    private val _dietaryPlan = MutableStateFlow<DietaryPlan?>(null)
+    val dietaryPlan: StateFlow<DietaryPlan?> = _dietaryPlan.asStateFlow()
+
     private val _dailyRoutines = MutableStateFlow<List<DailyRoutine>>(emptyList())
     val dailyRoutines: StateFlow<List<DailyRoutine>> = _dailyRoutines.asStateFlow()
 
@@ -304,11 +307,31 @@ class FitnessRepository(private val context: Context) {
             activeWallpaperId = activeWallpaper,
             isProUnlocked = isPro
         )
+
+        val targetCalories = prefs.getInt("target_calories", 2400)
+        val targetProtein = prefs.getInt("target_protein", 180)
+        val targetCarbs = prefs.getInt("target_carbs", 250)
+        val targetFats = prefs.getInt("target_fats", 70)
+        _nutritionGoals.value = NutritionGoals(
+            targetCalories = targetCalories,
+            targetProtein = targetProtein,
+            targetCarbs = targetCarbs,
+            targetFats = targetFats
+        )
+
+        val planJson = prefs.getString("dietary_plan_json", "") ?: ""
+        if (planJson.isNotBlank()) {
+            val loadedPlan = DietaryPlan.fromJson(planJson)
+            if (loadedPlan != null) {
+                _dietaryPlan.value = if (isPro) loadedPlan.copy(isProUnlocked = true) else loadedPlan
+            }
+        }
     }
 
     private fun saveData() {
         val p = _userProfile.value
-        prefs.edit()
+        val goals = _nutritionGoals.value
+        val editor = prefs.edit()
             .putInt("level", p.level)
             .putInt("xp", p.xp)
             .putInt("streak_days", p.streakDays)
@@ -325,7 +348,16 @@ class FitnessRepository(private val context: Context) {
             .putBoolean("is_pro_unlocked", p.isProUnlocked)
             .putString("unlocked_badges", JSONArray(p.unlockedBadgeIds).toString())
             .putString("purchased_items", JSONArray(p.purchasedItemIds).toString())
-            .apply()
+            .putInt("target_calories", goals.targetCalories)
+            .putInt("target_protein", goals.targetProtein)
+            .putInt("target_carbs", goals.targetCarbs)
+            .putInt("target_fats", goals.targetFats)
+
+        val plan = _dietaryPlan.value
+        if (plan != null) {
+            editor.putString("dietary_plan_json", plan.toJson())
+        }
+        editor.apply()
     }
 
     fun dismissLevelUpEvent() {
@@ -599,6 +631,64 @@ class FitnessRepository(private val context: Context) {
     fun unlockProTier() {
         val p = _userProfile.value
         _userProfile.value = p.copy(isProUnlocked = true)
+        val currentPlan = _dietaryPlan.value
+        if (currentPlan != null) {
+            _dietaryPlan.value = currentPlan.copy(isProUnlocked = true)
+        }
+        saveData()
+    }
+
+    fun updateNutritionGoals(newGoals: NutritionGoals) {
+        _nutritionGoals.value = newGoals
+        saveData()
+    }
+
+    fun saveDietaryPlan(plan: DietaryPlan) {
+        _dietaryPlan.value = plan
+        saveData()
+    }
+
+    fun applyDietaryPlanToTracker(plan: DietaryPlan) {
+        // 1. Update active target goals in real-time
+        _nutritionGoals.value = NutritionGoals(
+            targetCalories = plan.targetCalories,
+            targetProtein = plan.targetProtein,
+            targetCarbs = plan.targetCarbs,
+            targetFats = plan.targetFats
+        )
+
+        // 2. Update active plan
+        _dietaryPlan.value = plan
+
+        // 3. Inject deficiency remedies directly into daily routines
+        scope.launch {
+            val todayStr = dateFormat.format(Date())
+            val existingRoutines = dao.getRoutinesForDateList(todayStr)
+            val newRoutineEntities = mutableListOf<DailyRoutineEntity>()
+
+            plan.dailyHabitsToAdd.forEachIndexed { idx, habitTitle ->
+                val habitId = "routine_diet_${plan.id.take(6)}_$idx"
+                if (existingRoutines.none { it.id == habitId || it.title == habitTitle }) {
+                    newRoutineEntities.add(
+                        DailyRoutineEntity(
+                            id = habitId,
+                            title = habitTitle,
+                            category = if (habitTitle.contains("Sleep", ignoreCase = true) || habitTitle.contains("Water", ignoreCase = true)) "RECOVERY" else "NUTRITION",
+                            xpReward = 35,
+                            attributeType = "END",
+                            attributeReward = 2,
+                            isCompleted = false,
+                            dateString = todayStr
+                        )
+                    )
+                }
+            }
+            if (newRoutineEntities.isNotEmpty()) {
+                dao.insertRoutines(newRoutineEntities)
+            }
+        }
+
+        addXp(100)
         saveData()
     }
 

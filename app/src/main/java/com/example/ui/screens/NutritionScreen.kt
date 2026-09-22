@@ -27,11 +27,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.FoodDatabase
+import com.example.model.DietaryPlan
 import com.example.model.FoodItem
 import com.example.model.NutritionGoals
 import com.example.model.NutritionLog
 import com.example.model.UserProfile
 import com.example.ui.components.BarcodeScannerModal
+import com.example.ui.components.DietaryAssessmentModal
 import com.example.ui.components.FoodNutrientCalculatorModal
 import com.example.ui.components.HeaderComponent
 import com.example.ui.theme.*
@@ -44,6 +46,10 @@ fun NutritionScreen(
     userProfile: UserProfile,
     nutritionLogs: List<NutritionLog>,
     goals: NutritionGoals,
+    dietaryPlan: DietaryPlan? = null,
+    onSaveDietaryPlan: (DietaryPlan) -> Unit = {},
+    onApplyDietaryPlan: (DietaryPlan) -> Unit = {},
+    onOpenProModal: () -> Unit = {},
     onLogMeal: (
         mealName: String,
         calories: Int,
@@ -66,6 +72,7 @@ fun NutritionScreen(
     onDeleteMeal: (logId: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showDietaryAssessment by remember { mutableStateOf(false) }
     var mealName by remember { mutableStateOf("Grilled Chicken Breast") }
     var caloriesInput by remember { mutableStateOf("248") }
     var proteinInput by remember { mutableStateOf("47") }
@@ -159,6 +166,165 @@ fun NutritionScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black
                     )
+                }
+            }
+        }
+
+        // Personalized Dietary & Deficiency Protocol Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDietaryAssessment = true }
+                    .testTag("personalized_dietary_plan_banner"),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (dietaryPlan != null) NeonSurfaceCard else NeonSurface
+                ),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = Brush.horizontalGradient(
+                        if (dietaryPlan != null) {
+                            if (dietaryPlan.isProUnlocked || userProfile.isProUnlocked) {
+                                listOf(NeonGreen, Color(0xFF00FF88))
+                            } else {
+                                listOf(NeonMagenta, NeonAmber)
+                            }
+                        } else {
+                            listOf(NeonCyan, NeonMagenta)
+                        }
+                    ),
+                    width = 1.5.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonMagenta.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (dietaryPlan != null) dietaryPlan.dietType.iconEmoji else "🥗",
+                                    fontSize = 20.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = if (dietaryPlan != null) "ACTIVE PERSONALIZED PROTOCOL" else "DIETARY & DEFICIENCY ASSESSMENT",
+                                    color = NeonMagenta,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = if (dietaryPlan != null)
+                                        "${dietaryPlan.dietType.title} • ${dietaryPlan.goal.badge}"
+                                    else
+                                        "Synthesize Custom Plan & Deficiency Remedies",
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        // Badge
+                        val isPro = (dietaryPlan?.isProUnlocked == true) || userProfile.isProUnlocked
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isPro) NeonGreen.copy(alpha = 0.2f) else NeonAmber.copy(alpha = 0.2f)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (dietaryPlan == null) "QUIZ" else if (isPro) "PRO ACTIVE 👑" else "FREEMIUM ⚡",
+                                color = if (isPro) NeonGreen else NeonAmber,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (dietaryPlan != null) {
+                        Text(
+                            text = "Target: ${dietaryPlan.targetCalories} kcal • ${dietaryPlan.targetProtein}g Protein • ${dietaryPlan.deficiencies.size} deficiencies analyzed",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { showDietaryAssessment = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonMagenta),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .height(38.dp)
+                                    .testTag("view_dietary_plan_btn")
+                            ) {
+                                Text("VIEW FULL BLUEPRINT", color = NeonBackground, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            }
+
+                            OutlinedButton(
+                                onClick = { showDietaryAssessment = true },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .height(38.dp)
+                                    .testTag("retake_dietary_assessment_btn")
+                            ) {
+                                Text("RETAKE / EDIT", color = TextPrimary, fontSize = 11.sp)
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Answer guided questions regarding your dietary framework, goals, allergies, and symptom deficiencies to generate a custom macro allocation, targeted deficiency remediation, and curated 4-meal plan.",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { showDietaryAssessment = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .testTag("start_dietary_assessment_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Assessment,
+                                contentDescription = null,
+                                tint = NeonBackground,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("START DIETARY & DEFICIENCY ASSESSMENT", color = NeonBackground, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
                 }
             }
         }
@@ -694,6 +860,22 @@ fun NutritionScreen(
             onLogNutrients = { name, cal, p, c, f, serving, fiber, sugar, sod, pot, calc, iron, vc, vd, mg, zn, bc ->
                 onLogMeal(name, cal, p, c, f, serving, fiber, sugar, sod, pot, calc, iron, vc, vd, mg, zn, bc)
             }
+        )
+    }
+
+    // Dietary & Deficiency Assessment Plan Modal
+    if (showDietaryAssessment) {
+        DietaryAssessmentModal(
+            existingPlan = dietaryPlan,
+            userProfile = userProfile,
+            onDismiss = { showDietaryAssessment = false },
+            onSavePlan = { newPlan ->
+                onSaveDietaryPlan(newPlan)
+            },
+            onApplyPlanToTracker = { plan ->
+                onApplyDietaryPlan(plan)
+            },
+            onOpenProModal = onOpenProModal
         )
     }
 }

@@ -59,6 +59,7 @@ fun MainApp() {
     val workouts by repository.workouts.collectAsStateWithLifecycle()
     val nutritionLogs by repository.nutritionLogs.collectAsStateWithLifecycle()
     val nutritionGoals by repository.nutritionGoals.collectAsStateWithLifecycle()
+    val dietaryPlan by repository.dietaryPlan.collectAsStateWithLifecycle()
     val weightLogs by repository.weightLogs.collectAsStateWithLifecycle()
     val dailyRoutines by repository.dailyRoutines.collectAsStateWithLifecycle()
     val bossQuest by repository.bossQuest.collectAsStateWithLifecycle()
@@ -145,6 +146,10 @@ fun MainApp() {
                 userProfile = userProfile,
                 nutritionLogs = nutritionLogs,
                 goals = nutritionGoals,
+                dietaryPlan = dietaryPlan,
+                onSaveDietaryPlan = { plan -> repository.saveDietaryPlan(plan) },
+                onApplyDietaryPlan = { plan -> repository.applyDietaryPlanToTracker(plan) },
+                onOpenProModal = { showProModal = true },
                 onLogMeal = { name, cal, p, c, f, serving, fiber, sugar, sod, pot, calc, iron, vc, vd, mg, zn, bc ->
                     repository.logNutrition(
                         mealName = name,
@@ -211,6 +216,7 @@ fun MainApp() {
                             Recent Workouts: ${if (recentWorkoutsSummary.isEmpty()) "None logged yet" else recentWorkoutsSummary}
                             Today's Nutrition: $todayCalories kcal, ${todayProtein}g protein (Goals: ${nutritionGoals.targetCalories} kcal, ${nutritionGoals.targetProtein}g protein)
                             Micronutrients Today: Fiber=${todayFiber}g, Sodium=${todaySodium.toInt()}mg, Potassium=${todayPotassium.toInt()}mg, Vit D=${todayVitD.toInt()}IU
+                            Dietary Blueprint: ${dietaryPlan?.let { "${it.dietType.title} (${it.goal.title}), Deficiencies: " + it.deficiencies.joinToString { d -> d.deficiency.nutrientName } } ?: "Standard"}
                             Active Boss Quest: $bossInfo
                             Pro Tier: ${if (userProfile.isProUnlocked) "UNLOCKED" else "FREE"}
                         """.trimIndent()
